@@ -49,6 +49,10 @@ const App = () => {
   // VSCode sync hook
   const { sendUpdate, sendCommand } = useYamlSync(vscode, updateFromYaml);
 
+  useEffect(() => {
+    vscode?.postMessage({ type: "ready" });
+  }, []);
+
   // Local state
   const [activeTab, setActiveTab] = useState<"properties" | "yaml">(
     "properties",
