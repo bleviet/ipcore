@@ -1050,6 +1050,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                 field?.reset_value === null || field?.reset_value === undefined
                   ? 0
                   : Number(field.reset_value);
+              const isSingleBit = width === 1;
 
               return (
                 <div
@@ -1249,7 +1250,19 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                       return (
                         <div
                           key={i}
-                          className={`w-10 h-20 flex items-center justify-center touch-none ${v === 1 && !isOutOfNewRange ? "ring-1 ring-white/70 ring-inset" : ""}`}
+                          className={`w-10 h-20 flex items-center justify-center touch-none ${
+                            v === 1 && !isOutOfNewRange
+                              ? "ring-1 ring-white/70 ring-inset"
+                              : ""
+                          } ${
+                            isSingleBit
+                              ? "rounded-md"
+                              : i === 0
+                                ? "rounded-l-md"
+                                : i === width - 1
+                                  ? "rounded-r-md"
+                                  : ""
+                          }`}
                           style={{
                             background: isOutOfNewRange
                               ? "var(--vscode-editor-background)"
@@ -1385,10 +1398,24 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
         {bits.map((fieldIdx, bit) => {
           const isHovered = fieldIdx !== null && fieldIdx === hoveredFieldIndex;
           const dragKey = fieldIdx !== null ? `${fieldIdx}:${bit}` : null;
+          const range =
+            fieldIdx !== null ? getFieldRange(fields[fieldIdx]) : null;
+          const isSingleBit = range ? range.hi === range.lo : false;
+          const cornerClass = range
+            ? isSingleBit
+              ? "rounded-md"
+              : bit === range.hi
+                ? "rounded-l-md"
+                : bit === range.lo
+                  ? "rounded-r-md"
+                  : ""
+            : "";
           return (
             <div
               key={bit}
-              className={`w-10 h-20 flex flex-col items-center justify-end cursor-pointer group ${fieldIdx !== null ? "bg-blue-500" : "vscode-surface-alt"} ${isHovered ? "z-10" : ""}`}
+              className={`w-10 h-20 flex flex-col items-center justify-end cursor-pointer group ${
+                fieldIdx !== null ? "bg-blue-500" : "vscode-surface-alt"
+              } ${isHovered ? "z-10" : ""} ${cornerClass}`}
               style={{
                 boxShadow: isHovered
                   ? "inset 0 0 0 2px var(--vscode-focusBorder)"
