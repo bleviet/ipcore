@@ -16,12 +16,12 @@ async def test_register_access(dut):
     """
 
     # 1. Setup Clock
-    cocotb.start_soon(Clock(dut.{{ clock_port }}, 10, units="ns").start())
+    cocotb.start_soon(Clock(dut.{{ clock_port }}, 10, unit="ns").start())
 
     # 2. Reset
     dut.{{ reset_port }}.value = {% if reset_active_high %}1{% else %}0{% endif %}
 
-    await Timer(100, units="ns")
+    await Timer(100, unit="ns")
     dut.{{ reset_port }}.value = {% if reset_active_high %}0{% else %}1{% endif %}
 
     await RisingEdge(dut.{{ clock_port }})
@@ -109,10 +109,10 @@ async def test_field_access(dut):
     """
 
     # Setup
-    cocotb.start_soon(Clock(dut.{{ clock_port }}, 10, units="ns").start())
+    cocotb.start_soon(Clock(dut.{{ clock_port }}, 10, unit="ns").start())
     dut.{{ reset_port }}.value = {% if reset_active_high %}1{% else %}0{% endif %}
 
-    await Timer(100, units="ns")
+    await Timer(100, unit="ns")
     dut.{{ reset_port }}.value = {% if reset_active_high %}0{% else %}1{% endif %}
 
     await RisingEdge(dut.{{ clock_port }})

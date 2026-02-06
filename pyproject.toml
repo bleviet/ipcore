@@ -17,6 +17,7 @@ dependencies = [
     "dataclasses-json",
     "click",
     "cocotb>=2.0",
+    "cocotbext-axi>=0.1.26",
 ]
 
 [project.scripts]
