@@ -1344,7 +1344,7 @@ const BitFieldVisualizer: React.FC<BitFieldVisualizerProps> = ({
                     })}
                   </div>
                   <div
-                    className={`absolute -top-10 px-2 py-0.5 rounded border shadow text-xs whitespace-nowrap pointer-events-none ${
+                    className={`absolute -top-12 px-2 py-0.5 rounded border shadow text-xs whitespace-nowrap pointer-events-none ${
                       segIdx === 0 ? "left-0" : "left-1/2 -translate-x-1/2"
                     }`}
                     style={{
