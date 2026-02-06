@@ -64,7 +64,7 @@ const RegisterMapVisualizer: React.FC<RegisterMapVisualizerProps> = ({
           r.offset = runningOffset;
           r.address_offset = runningOffset;
           // Calculate size for this item
-          if (r.__kind === 'array') {
+          if (r.__kind === "array") {
             runningOffset += (r.count || 1) * (r.stride || 4);
           } else {
             runningOffset += 4; // Regular register = 4 bytes
@@ -115,7 +115,7 @@ const RegisterMapVisualizer: React.FC<RegisterMapVisualizerProps> = ({
       // Calculate size - arrays use count * stride, registers use 4 bytes (32-bit default)
       let size = 4; // Default: 4 bytes (32-bit register)
       let isArray = false;
-      if (reg.__kind === 'array') {
+      if (reg.__kind === "array") {
         size = (reg.count || 1) * (reg.stride || 4);
         isArray = true;
       } else if (reg.size) {
@@ -167,6 +167,8 @@ const RegisterMapVisualizer: React.FC<RegisterMapVisualizerProps> = ({
               ctrlDrag.active &&
               ctrlDrag.targetIndex === displayIdx &&
               ctrlDrag.draggedRegIndex !== displayIdx;
+            const separatorShadow =
+              "inset 0 0 0 1px var(--vscode-panel-border)";
 
             return (
               <div
@@ -194,7 +196,7 @@ const RegisterMapVisualizer: React.FC<RegisterMapVisualizerProps> = ({
                 }}
               >
                 <div
-                  className={`h-20 w-full rounded-t-md overflow-hidden flex items-center justify-center px-2 ${group.isArray ? 'border-2 border-dashed border-white/30' : ''}`}
+                  className={`h-20 w-full overflow-hidden flex items-center justify-center px-2 rounded-md ${group.isArray ? "border-2 border-dashed border-white/30" : ""}`}
                   style={{
                     background: FIELD_COLORS[group.color],
                     opacity: 1,
@@ -203,16 +205,18 @@ const RegisterMapVisualizer: React.FC<RegisterMapVisualizerProps> = ({
                       ? "saturate(1.15) brightness(1.05)"
                       : undefined,
                     boxShadow: isDropTarget
-                      ? "0 0 0 3px var(--vscode-focusBorder), 0 0 12px var(--vscode-focusBorder)"
+                      ? `${separatorShadow}, 0 0 0 3px var(--vscode-focusBorder), 0 0 12px var(--vscode-focusBorder)`
                       : isHovered
-                        ? "0 0 0 2px var(--vscode-focusBorder), 0 10px 20px color-mix(in srgb, var(--vscode-foreground) 22%, transparent)"
-                        : undefined,
+                        ? `${separatorShadow}, 0 0 0 2px var(--vscode-focusBorder), 0 10px 20px color-mix(in srgb, var(--vscode-foreground) 22%, transparent)`
+                        : separatorShadow,
                   }}
                 >
                   <div className="flex flex-col items-center gap-0.5">
-                    <span className="text-lg select-none">{group.isArray ? '📦' : '📋'}</span>
+                    <span className="text-lg select-none">
+                      {group.isArray ? "📦" : "📋"}
+                    </span>
                     <span className="text-[10px] font-mono text-white/80 font-semibold select-none text-center leading-tight">
-                      {group.isArray ? `[${group.count}]` : 'REG'}
+                      {group.isArray ? `[${group.count}]` : "REG"}
                     </span>
                   </div>
                 </div>
@@ -233,7 +237,8 @@ const RegisterMapVisualizer: React.FC<RegisterMapVisualizerProps> = ({
                     </span>
                   </div>
                   <div className="text-[11px] vscode-muted font-mono">
-                    {toHex(group.absoluteAddress)} → {toHex(group.absoluteAddress + group.size - 1)}
+                    {toHex(group.absoluteAddress)} →{" "}
+                    {toHex(group.absoluteAddress + group.size - 1)}
                   </div>
                 </div>
                 <div className="flex w-full justify-center">

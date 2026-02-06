@@ -31,7 +31,7 @@ function calculateBlockSize(block: any): number {
 
   let totalSize = 0;
   for (const reg of registers) {
-    if (reg.__kind === 'array') {
+    if (reg.__kind === "array") {
       // Register array: size = count * stride
       const count = reg.count || 1;
       const stride = reg.stride || 4;
@@ -89,17 +89,19 @@ const AddressMapVisualizer: React.FC<AddressMapVisualizerProps> = ({
         <div className="relative flex flex-row items-end gap-0 pl-4 pr-2 pt-12 pb-2 min-h-[64px] w-full">
           {groups.map((group, groupIdx) => {
             const isHovered = hoveredBlockIndex === group.idx;
+            const separatorShadow =
+              "inset 0 0 0 1px var(--vscode-panel-border)";
             return (
               <div
                 key={group.idx}
                 className={`relative flex-1 flex flex-col items-center justify-end select-none min-w-[120px] ${isHovered ? "z-10" : ""}`}
-                style={{ cursor: onBlockClick ? 'pointer' : 'default' }}
+                style={{ cursor: onBlockClick ? "pointer" : "default" }}
                 onMouseEnter={() => setHoveredBlockIndex(group.idx)}
                 onMouseLeave={() => setHoveredBlockIndex(null)}
                 onClick={() => onBlockClick?.(group.idx)}
               >
                 <div
-                  className="h-20 w-full rounded-t-md overflow-hidden flex items-center justify-center px-2"
+                  className="h-20 w-full overflow-hidden flex items-center justify-center px-2 rounded-md"
                   style={{
                     background: FIELD_COLORS[group.color],
                     opacity: 1,
@@ -108,8 +110,8 @@ const AddressMapVisualizer: React.FC<AddressMapVisualizerProps> = ({
                       ? "saturate(1.15) brightness(1.05)"
                       : undefined,
                     boxShadow: isHovered
-                      ? "0 0 0 2px var(--vscode-focusBorder), 0 10px 20px color-mix(in srgb, var(--vscode-foreground) 22%, transparent)"
-                      : undefined,
+                      ? `${separatorShadow}, 0 0 0 2px var(--vscode-focusBorder), 0 10px 20px color-mix(in srgb, var(--vscode-foreground) 22%, transparent)`
+                      : separatorShadow,
                   }}
                 >
                   <div className="flex flex-col items-center gap-0.5">
