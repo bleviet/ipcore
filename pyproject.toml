@@ -15,7 +15,8 @@ dependencies = [
     "textual",
     "pyparsing",
     "dataclasses-json",
-    "click"
+    "click",
+    "cocotb>=2.0",
 ]
 
 [project.scripts]

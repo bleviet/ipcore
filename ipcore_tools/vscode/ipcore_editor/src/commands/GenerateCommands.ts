@@ -2,15 +2,17 @@
  * VS Code Commands for VHDL Code Generation
  *
  * Provides commands to generate VHDL files from IP core definitions.
- * Requires Python backend (ipcore.py) with ipcore_lib installed.
  */
 
 import * as vscode from "vscode";
 import * as path from "path";
-import { PythonBackend } from "../services/PythonBackend";
+import * as YAML from "yaml";
+import { Logger } from "../utils/Logger";
+import { TemplateLoader } from "../generator/TemplateLoader";
+import { VhdlGenerator } from "../generator/VhdlGenerator";
+import { VhdlParser } from "../parser/VhdlParser";
 
-// Singleton backend instance
-let pythonBackend: PythonBackend | undefined;
+const logger = new Logger("GenerateCommands");
 
 /**
  * Register all generator commands with VS Code
@@ -18,10 +20,6 @@ let pythonBackend: PythonBackend | undefined;
 export function registerGeneratorCommands(
   context: vscode.ExtensionContext,
 ): void {
-  // Initialize Python backend
-  pythonBackend = new PythonBackend();
-  context.subscriptions.push({ dispose: () => pythonBackend?.dispose() });
-
   // Generate VHDL command (auto-detects bus from YAML)
   context.subscriptions.push(
     vscode.commands.registerCommand("fpga-ip-core.generateVHDL", async () => {
@@ -86,26 +84,6 @@ async function generateVHDL(): Promise<void> {
     return;
   }
 
-  // Check if Python backend is available
-  if (!pythonBackend) {
-    vscode.window.showErrorMessage("Python backend not initialized.");
-    return;
-  }
-
-  const isAvailable = await pythonBackend.isAvailable();
-  if (!isAvailable) {
-    const action = await vscode.window.showErrorMessage(
-      "Python backend not available. Please ensure Python and ipcore_lib are installed.",
-      "Show Setup Instructions",
-    );
-    if (action === "Show Setup Instructions") {
-      vscode.env.openExternal(
-        vscode.Uri.parse("https://github.com/bleviet/ipcore_lib#installation"),
-      );
-    }
-    return;
-  }
-
   const sourceDir = path.dirname(ipCoreUri.fsPath);
   const defaultOutputDir = path.join(sourceDir, "generated");
 
@@ -127,15 +105,21 @@ async function generateVHDL(): Promise<void> {
       title: "Generating VHDL files...",
       cancellable: false,
     },
-    async (progress) => {
-      const result = await pythonBackend!.generateVHDL(
-        ipCoreUri.fsPath,
-        outputDir,
-        { updateYaml: true },
-        progress,
-      );
+    async () => {
+      const generator = new VhdlGenerator(logger, new TemplateLoader(logger));
+      const result = await generator.generateAll(ipCoreUri.fsPath, outputDir, {
+        updateYaml: true,
+      });
 
       if (result.success) {
+        if (result.files) {
+          await updateFileSetsInYaml(
+            ipCoreUri,
+            outputDir,
+            Object.keys(result.files),
+          );
+        }
+
         const action = await vscode.window.showInformationMessage(
           `✓ Generated ${result.count} files`,
           "Open Folder",
@@ -187,26 +171,6 @@ async function parseVHDL(resourceUri?: vscode.Uri): Promise<void> {
     return;
   }
 
-  // Check Python backend
-  if (!pythonBackend) {
-    vscode.window.showErrorMessage("Python backend not initialized.");
-    return;
-  }
-
-  const isAvailable = await pythonBackend.isAvailable();
-  if (!isAvailable) {
-    const action = await vscode.window.showErrorMessage(
-      "Python backend not available. Please ensure Python and ipcore_lib are installed.",
-      "Show Setup Instructions",
-    );
-    if (action === "Show Setup Instructions") {
-      vscode.env.openExternal(
-        vscode.Uri.parse("https://github.com/bleviet/ipcore_lib#installation"),
-      );
-    }
-    return;
-  }
-
   // Generate output path (.ip.yml next to .vhd)
   const vhdlPath = vhdlUri.fsPath;
   const baseName = path.basename(vhdlPath, path.extname(vhdlPath));
@@ -219,27 +183,159 @@ async function parseVHDL(resourceUri?: vscode.Uri): Promise<void> {
       title: "Creating IP Core from VHDL...",
       cancellable: false,
     },
-    async (progress) => {
-      const result = await pythonBackend!.parseVHDL(
-        vhdlPath,
-        defaultOutput,
-        { detectBus: true },
-        progress,
-      );
+    async () => {
+      try {
+        const parser = new VhdlParser();
+        const result = await parser.parseFile(vhdlPath, { detectBus: true });
 
-      if (result.success && result.output) {
+        const encoder = new TextEncoder();
+        await vscode.workspace.fs.writeFile(
+          vscode.Uri.file(defaultOutput),
+          encoder.encode(result.yamlText),
+        );
+
         const action = await vscode.window.showInformationMessage(
-          `✓ Created ${path.basename(result.output)}`,
+          `✓ Created ${path.basename(defaultOutput)}`,
           "Open File",
         );
 
         if (action === "Open File") {
-          const doc = await vscode.workspace.openTextDocument(result.output);
+          const doc = await vscode.workspace.openTextDocument(defaultOutput);
           await vscode.window.showTextDocument(doc);
         }
-      } else {
-        vscode.window.showErrorMessage(`Parse failed: ${result.error}`);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        vscode.window.showErrorMessage(`Parse failed: ${message}`);
       }
     },
   );
+}
+
+async function updateFileSetsInYaml(
+  ipCoreUri: vscode.Uri,
+  outputBaseDir: string,
+  writtenFiles: string[],
+): Promise<void> {
+  try {
+    const document = await vscode.workspace.openTextDocument(ipCoreUri);
+    const baseDir = path.dirname(ipCoreUri.fsPath);
+    const doc = YAML.parseDocument(document.getText());
+    const yamlRelativeFiles = writtenFiles.map((file) => {
+      const absolutePath = path.join(outputBaseDir, file);
+      return path.relative(baseDir, absolutePath);
+    });
+
+    const rtlFiles = yamlRelativeFiles.filter(
+      (file) =>
+        file.endsWith(".vhd") &&
+        !file.endsWith("_regs.vhd") &&
+        !file.endsWith("_tb.vhd"),
+    );
+    const simFiles = yamlRelativeFiles.filter(
+      (file) =>
+        file.endsWith(".py") ||
+        file.endsWith("Makefile") ||
+        file.endsWith("_tb.vhd"),
+    );
+    const integrationFiles = yamlRelativeFiles.filter(
+      (file) =>
+        file.endsWith(".tcl") ||
+        file.endsWith(".xml") ||
+        file.endsWith("_regs.vhd"),
+    );
+
+    const currentData = doc.toJSON();
+    let fileSets = currentData.fileSets || currentData.file_sets || [];
+    const key = currentData.fileSets
+      ? "fileSets"
+      : currentData.file_sets
+        ? "file_sets"
+        : "fileSets";
+
+    if (!Array.isArray(fileSets)) {
+      fileSets = [];
+    }
+
+    const updateFileSet = (
+      setNames: string[],
+      setDescription: string,
+      newFiles: string[],
+      fileTypeMap: (filePath: string) => string,
+    ) => {
+      if (newFiles.length === 0) return;
+
+      let targetSetIndex = fileSets.findIndex(
+        (fs: any) => fs && fs.name && setNames.includes(fs.name),
+      );
+
+      let usedName = setNames[0];
+
+      if (targetSetIndex === -1) {
+        fileSets.push({
+          name: usedName,
+          description: setDescription,
+          files: [],
+        });
+        targetSetIndex = fileSets.length - 1;
+      } else {
+        usedName = fileSets[targetSetIndex].name;
+      }
+
+      if (!fileSets[targetSetIndex].files) {
+        fileSets[targetSetIndex].files = [];
+      }
+      const existingFiles = fileSets[targetSetIndex].files;
+
+      newFiles.forEach((filePath) => {
+        const exists = existingFiles.some((f: any) => f.path === filePath);
+        if (!exists) {
+          existingFiles.push({
+            path: filePath,
+            type: fileTypeMap(filePath),
+          });
+        }
+      });
+    };
+
+    updateFileSet(
+      ["RTL_Sources", "rtl_sources", "rtl", "RTL"],
+      "RTL Sources",
+      rtlFiles,
+      () => "vhdl",
+    );
+    updateFileSet(
+      ["Simulation_Resources", "simulation", "tb"],
+      "Simulation Files",
+      simFiles,
+      (file) => {
+        if (file.endsWith("Makefile")) return "unknown";
+        if (file.endsWith(".py")) return "python";
+        return "vhdl";
+      },
+    );
+    updateFileSet(
+      ["Integration", "integration"],
+      "Integration Files",
+      integrationFiles,
+      (file) => {
+        if (file.endsWith(".tcl")) return "tcl";
+        if (file.endsWith(".xml")) return "unknown";
+        return "vhdl";
+      },
+    );
+
+    doc.setIn([key], fileSets);
+    const newText = doc.toString();
+    const edit = new vscode.WorkspaceEdit();
+    const lastLine = document.lineAt(Math.max(0, document.lineCount - 1));
+    edit.replace(
+      document.uri,
+      new vscode.Range(0, 0, lastLine.lineNumber, lastLine.text.length),
+      newText,
+    );
+    await vscode.workspace.applyEdit(edit);
+    await document.save();
+  } catch (error) {
+    logger.error("Failed to update fileSets", error as Error);
+  }
 }

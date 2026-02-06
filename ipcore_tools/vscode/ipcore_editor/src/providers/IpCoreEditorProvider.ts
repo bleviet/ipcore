@@ -8,7 +8,8 @@ import { MessageHandler } from "../services/MessageHandler";
 import { YamlValidator } from "../services/YamlValidator";
 import { DocumentManager } from "../services/DocumentManager";
 import { ImportResolver } from "../services/ImportResolver";
-import { PythonBackend } from "../services/PythonBackend";
+import { TemplateLoader } from "../generator/TemplateLoader";
+import { VhdlGenerator } from "../generator/VhdlGenerator";
 
 /**
  * Custom editor provider for FPGA IP core YAML files.
@@ -269,7 +270,7 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
         });
         this.logger.debug(`Checked ${filePaths.length} file(s) for existence`);
       } else if (message.type === "generate") {
-        // Handle VHDL generation request using Python backend
+        // Handle VHDL generation request using TypeScript backend
         this.logger.info("Generate request received", message.options);
 
         try {
@@ -300,34 +301,21 @@ export class IpCoreEditorProvider implements vscode.CustomTextEditorProvider {
           // Create output directory: <selected>/<ip_name>/
           const outputBaseDir = path.join(folderUris[0].fsPath, ipName);
 
-          // Use Python backend for generation
-          const pythonBackend = new PythonBackend();
-          const isAvailable = await pythonBackend.isAvailable();
-
-          if (!isAvailable) {
-            webviewPanel.webview.postMessage({
-              type: "generateResult",
-              success: false,
-              error:
-                "Python backend not available. Please ensure Python and ipcore_lib are installed.",
-            });
-            pythonBackend.dispose();
-            return;
-          }
-
-          // Call Python backend
-          const result = await pythonBackend.generateVHDL(
+          const generator = new VhdlGenerator(
+            this.logger,
+            new TemplateLoader(this.logger),
+          );
+          const result = await generator.generateAll(
             document.uri.fsPath,
             outputBaseDir,
             {
               vendor: message.options?.vendorFiles || "both",
               includeTestbench: message.options?.includeTestbench !== false,
-              includeRegs: message.options?.includeRegfile || true,
-              updateYaml: false, // We'll update YAML ourselves to refresh webview
+              includeRegs: message.options?.includeRegfile !== false,
+              includeVhdl: message.options?.includeVhdl !== false,
+              updateYaml: false,
             },
           );
-
-          pythonBackend.dispose();
 
           if (!result.success) {
             webviewPanel.webview.postMessage({

@@ -26,7 +26,10 @@
 * **Providers:** `src/providers/` - `MemoryMapEditorProvider`, `IpCoreEditorProvider` for visual YAML editing.
 * **Commands:** `src/commands/` - `FileCreationCommands.ts`, `GenerateCommands.ts` for file scaffolding and VHDL generation.
 * **Services:** `src/services/` - `DocumentManager`, `HtmlGenerator`, `ImportResolver`, `MessageHandler`, `YamlValidator`.
-* **Generator:** `src/generator/` - TypeScript reimplementation of VHDL generator with Nunjucks templates.
+* **Services:** `src/services/BusLibraryService.ts` - Loads local bus library definitions from `ipcore_spec`.
+* **Generator:** `src/generator/` - TypeScript VHDL generator scaffolding and template loader.
+* **Parser:** `src/parser/VhdlParser.ts` - TypeScript VHDL-to-IP YAML parser for the extension.
+* **Generator Scripts:** `scripts/sync-templates.js` - Syncs Jinja2 templates into the extension for Nunjucks.
 * **Webview:** `src/webview/` - React-based UI components for custom editors.
 
 ### Memory Map Editor (`ipcore_tools/python/memory_map_editor/`)

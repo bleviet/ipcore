@@ -4,6 +4,13 @@
 
 The FPGA Memory Map Visual Editor is a VSCode extension that provides a visual interface for editing memory map YAML files. This document describes the architecture after the Phase 2-3 refactoring.
 
+## HDL Generation
+
+The extension performs HDL generation and VHDL parsing in TypeScript using Nunjucks templates synced from the
+Python generator. We chose this approach to keep the extension fully standalone and responsive, avoiding the
+latency and environment drift that comes from invoking a Python backend at runtime. Templates remain the
+shared source of truth to preserve output parity across implementations.
+
 ## System Architecture
 
 ```mermaid

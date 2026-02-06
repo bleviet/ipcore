@@ -11,6 +11,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as yaml from "js-yaml";
 import { Logger } from "../utils/Logger";
+import { BusLibraryService } from "./BusLibraryService";
 
 export interface ResolvedImports {
   memoryMaps?: any[];
@@ -22,9 +23,11 @@ export class ImportResolver {
   private readonly logger: Logger;
   private busLibraryCache: Map<string, any> = new Map();
   private defaultBusLibraryCache: any = null;
+  private busLibraryService: BusLibraryService;
 
   constructor(logger: Logger) {
     this.logger = logger;
+    this.busLibraryService = new BusLibraryService(logger);
   }
 
   /**
@@ -76,7 +79,7 @@ export class ImportResolver {
   }
 
   /**
-   * Load default bus library using Python backend.
+   * Load default bus library from ipcore_spec.
    * Returns the library in the format expected by the UI: { [key]: { ports: [...] } }
    */
   private async loadDefaultBusLibrary(): Promise<any> {
@@ -85,46 +88,11 @@ export class ImportResolver {
       return this.defaultBusLibraryCache;
     }
 
-    try {
-      // Import PythonBackend dynamically to avoid circular dependencies
-      const { PythonBackend } = await import("./PythonBackend");
-      const backend = new PythonBackend();
-
-      const isAvailable = await backend.isAvailable();
-      if (!isAvailable) {
-        this.logger.info(
-          "Python backend not available, using empty bus library",
-        );
-        backend.dispose();
-        return {};
-      }
-
-      const result = await backend.listBuses();
-      backend.dispose();
-
-      if (!result.success) {
-        this.logger.info("Failed to load bus library from Python backend");
-        return {};
-      }
-
-      // Use the library field directly from the response
-      if (result.library) {
-        this.defaultBusLibraryCache = result.library;
-        this.logger.info(
-          `Loaded ${Object.keys(result.library).length} bus types from Python backend`,
-        );
-        return result.library;
-      }
-
-      this.logger.info("No library data in Python backend response");
-      return {};
-    } catch (error) {
-      this.logger.error(
-        "Failed to load bus library from Python backend",
-        error as Error,
-      );
-      return {};
-    }
+    const library = await this.busLibraryService.loadDefaultLibrary();
+    this.defaultBusLibraryCache = library;
+    const count = library ? Object.keys(library).length : 0;
+    this.logger.info(`Loaded ${count} bus types from local library`);
+    return library;
   }
 
   /**

@@ -26,3 +26,7 @@ indent_size = 4
 # YAML and Web technologies favor 2 spaces
 [*.{yaml,yml,js,ts,jsx,tsx,json,css,scss,html}]
 indent_size = 2
+
+[*.j2]
+indent_size = unset
+trim_trailing_whitespace = false

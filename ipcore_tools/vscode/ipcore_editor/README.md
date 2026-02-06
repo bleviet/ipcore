@@ -14,20 +14,9 @@ A VSCode extension providing a visual editor for FPGA memory map YAML files.
 
 ## Requirements
 
-This extension requires the **ipcore_lib** Python package to be installed in your Python environment.
-The extension relies on the `scripts/ipcore.py` backend for VHDL generation.
-
-### Installing ipcore_lib
-
-From the root of the repository:
-
-```bash
-# Using uv (recommended)
-uv sync
-
-# Or using pip
-pip install -e .
-```
+No Python runtime is required. HDL generation and VHDL parsing run entirely in TypeScript using the bundled
+Nunjucks templates. When working in the mono-repo, the extension loads the default bus library from
+`ipcore_spec/common/bus_definitions.yml`.
 
 ## Installation
 
